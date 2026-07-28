@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Payment Processing System</title>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="app-header">
+    <div>
+        <h1>Payment Processing System</h1>
+        <p>Spring Boot + MySQL + HTML/CSS/JavaScript</p>
+    </div>
+</header>
+
+<main class="layout">
+    <section class="card">
+        <div class="section-title">
+            <h2>Create Payment</h2>
+            <button id="fillDemoBtn" class="secondary-btn" type="button">Fill Demo Data</button>
+        </div>
+
+        <form id="createPaymentForm" class="payment-form">
+            <label>
+                Idempotency Key
+                <input id="idempotencyKey" name="idempotencyKey" type="text" required
+                       placeholder="PAY-DEMO-001"/>
+            </label>
+
+            <label>
+                Source Account
+                <input id="sourceAccount" name="sourceAccount" type="text" required
+                       placeholder="ACC-001"/>
+            </label>
+
+            <label>
+                Destination Account
+                <input id="destinationAccount" name="destinationAccount" type="text" required
+                       placeholder="ACC-002"/>
+            </label>
+
+            <label>
+                Amount
+                <input id="amount" name="amount" type="number" required min="0.01" step="0.01"
+                       placeholder="100.00"/>
+            </label>
+
+            <label>
+                Currency
+                <select id="currency" name="currency" required>
+                    <option value="CNY">CNY</option>
+                    <option value="GBP">GBP</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                </select>
+            </label>
+
+            <label class="full-width">
+                Reference
+                <input id="reference" name="reference" type="text"
+                       placeholder="Invoice 1001"/>
+            </label>
+
+            <div class="form-actions">
+                <button type="submit">Create Payment</button>
+                <button id="resetFormBtn" class="secondary-btn" type="button">Clear</button>
+            </div>
+        </form>
+        <div id="formMessage" class="message hidden"></div>
+    </section>
+
+    <section class="card">
+        <div class="section-title">
+            <h2>Payments</h2>
+            <div class="toolbar">
+                <select id="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="CREATED">CREATED</option>
+                    <option value="VALIDATED">VALIDATED</option>
+                    <option value="SENT">SENT</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                    <option value="FAILED">FAILED</option>
+                </select>
+                <button id="refreshBtn" class="secondary-btn" type="button">Refresh</button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Reference</th>
+                    <th>Amount</th>
+                    <th>Currency</th>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                </tr>
+                </thead>
+                <tbody id="paymentsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card detail-card">
+        <div class="section-title">
+            <h2>Payment Details</h2>
+            <span id="selectedPaymentHint" class="hint">Click a payment row to view details.</span>
+        </div>
+
+        <div id="paymentDetail" class="detail-grid empty">
+            No payment selected.
+        </div>
+
+        <div id="actionButtons" class="action-buttons hidden"></div>
+
+        <h3>Status History</h3>
+        <div id="historyTimeline" class="timeline empty">
+            No history yet.
+        </div>
+    </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
