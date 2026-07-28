@@ -1,0 +1,14 @@
+package com.example.paymentprocessing.enums;
+
+public enum PaymentErrorCode {
+    VALIDATION_FAILED,
+    INSUFFICIENT_FUNDS,
+    INVALID_ACCOUNT,
+    INVALID_CURRENCY,
+    INVALID_AMOUNT,
+    DUPLICATE_PAYMENT,
+    INVALID_STATUS_TRANSITION,
+    PAYMENT_NOT_FOUND,
+    PROCESSING_ERROR,
+    NETWORK_ERROR
+}
