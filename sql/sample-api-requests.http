@@ -1,0 +1,39 @@
+### Create payment
+POST http://localhost:8080/api/payments
+Content-Type: application/json
+
+{
+  "idempotencyKey": "PAY-LOCAL-001",
+  "sourceAccount": "ACC-001",
+  "destinationAccount": "ACC-002",
+  "amount": 120.50,
+  "currency": "GBP",
+  "reference": "Local API test"
+}
+
+### Get all payments
+GET http://localhost:8080/api/payments
+
+### Get payments by status
+GET http://localhost:8080/api/payments?status=CREATED
+
+### Get payment details
+GET http://localhost:8080/api/payments/1/details
+
+### Validate payment
+POST http://localhost:8080/api/payments/1/validate
+
+### Send payment
+POST http://localhost:8080/api/payments/2/send
+
+### Complete payment
+POST http://localhost:8080/api/payments/3/complete
+
+### Fail payment
+POST http://localhost:8080/api/payments/2/fail
+Content-Type: application/json
+
+{
+  "errorCode": "NETWORK_ERROR",
+  "errorMessage": "Simulated network error"
+}
