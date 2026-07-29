@@ -1,7 +1,9 @@
 package com.example.paymentprocessing.service;
 
 import com.example.paymentprocessing.dto.CreatePaymentRequest;
+import com.example.paymentprocessing.dto.PaymentDetailResponse;
 import com.example.paymentprocessing.dto.PaymentResponse;
+import com.example.paymentprocessing.dto.PaymentStatusHistoryResponse;
 import com.example.paymentprocessing.entity.Payment;
 import com.example.paymentprocessing.entity.PaymentStatusHistory;
 import com.example.paymentprocessing.enums.PaymentStatus;
@@ -97,6 +99,32 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public PaymentResponse getPayment(Long id) {
         return paymentMapper.toResponse(getPaymentOrThrow(id));
+    }
+    @Transactional(readOnly = true)
+    public PaymentDetailResponse getPaymentDetails(Long id) {
+        Payment payment = getPaymentOrThrow(id);
+
+        List<PaymentStatusHistoryResponse> history = historyRepository
+                .findAllByPaymentIdOrderByChangedAtAsc(id)
+                .stream()
+                .map(paymentMapper::toHistoryResponse)
+                .toList();
+
+        return new PaymentDetailResponse(
+                paymentMapper.toResponse(payment),
+                history
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentStatusHistoryResponse> getPaymentHistory(Long id) {
+        getPaymentOrThrow(id);
+
+        return historyRepository
+                .findAllByPaymentIdOrderByChangedAtAsc(id)
+                .stream()
+                .map(paymentMapper::toHistoryResponse)
+                .toList();
     }
 
     private Payment getPaymentOrThrow(Long id) {
