@@ -111,13 +111,6 @@ public class PaymentValidationService {
             );
         }
 
-        if (destinationAccount.getCurrency() != payment.getCurrency()) {
-            throw new PaymentValidationException(
-                    PaymentErrorCode.INVALID_CURRENCY,
-                    "Payment currency does not match destination account currency"
-            );
-        }
-
         if (sourceAccount.getBalance().compareTo(payment.getAmount()) < 0) {
             throw new PaymentValidationException(
                     PaymentErrorCode.INSUFFICIENT_FUNDS,

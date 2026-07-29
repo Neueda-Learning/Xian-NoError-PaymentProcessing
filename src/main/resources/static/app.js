@@ -312,10 +312,10 @@ function fillDemoData() {
 
     document.getElementById('idempotencyKey').value = `PAY-DEMO-${timestamp}`;
     document.getElementById('sourceAccount').value = 'ACC-001';
-    document.getElementById('destinationAccount').value = 'ACC-002';
+    document.getElementById('destinationAccount').value = 'ACC-USD-001';
     document.getElementById('amount').value = '250.00';
     document.getElementById('currency').value = 'CNY';
-    document.getElementById('reference').value = `Demo payment ${timestamp}`;
+    document.getElementById('reference').value = `Cross-currency demo payment ${timestamp}`;
 }
 
 function escapeHtml(value) {
