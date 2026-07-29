@@ -27,6 +27,7 @@ public class PaymentValidationService {
         validateAccounts(payment);
     }
 
+    // check the payment amount
     private void validateAmount(Payment payment) {
         if (payment.getAmount() == null) {
             throw new PaymentValidationException(
@@ -50,6 +51,7 @@ public class PaymentValidationService {
         }
     }
 
+    // check the payment account
     private void validateAccounts(Payment payment) {
         if (payment.getSourceAccount() == null
                 || payment.getSourceAccount().isBlank()) {
