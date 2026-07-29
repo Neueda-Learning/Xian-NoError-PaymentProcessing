@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "payments",
+        // avoid duplicate payment requests.
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_payment_idempotency_key",
@@ -26,13 +27,6 @@ public class Payment {
     @Column(name = "idempotency_key", nullable = false, unique = true)
     private String idempotencyKey;
 
-    /*
-     * 加入 Account 表之后，这里保存的是账户编号。
-     * 例如：ACC-001
-     *
-     * 不建议在 Payment 里直接保存 Account 对象，
-     * 初学阶段先用 String 更简单。
-     */
     @Column(name = "source_account", nullable = false)
     private String sourceAccount;
 

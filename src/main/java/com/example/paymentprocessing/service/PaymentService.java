@@ -1,8 +1,6 @@
 package com.example.paymentprocessing.service;
 
-import com.example.paymentprocessing.dto.CreatePaymentRequest;
-import com.example.paymentprocessing.dto.FailPaymentRequest;
-import com.example.paymentprocessing.dto.PaymentResponse;
+import com.example.paymentprocessing.dto.*;
 import com.example.paymentprocessing.entity.Account;
 import com.example.paymentprocessing.entity.Payment;
 import com.example.paymentprocessing.entity.PaymentStatusHistory;
@@ -102,6 +100,32 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public PaymentResponse getPayment(Long id) {
         return paymentMapper.toResponse(getPaymentOrThrow(id));
+    }
+    @Transactional(readOnly = true)
+    public PaymentDetailResponse getPaymentDetails(Long id) {
+        Payment payment = getPaymentOrThrow(id);
+
+        List<PaymentStatusHistoryResponse> history = historyRepository
+                .findAllByPaymentIdOrderByChangedAtAsc(id)
+                .stream()
+                .map(paymentMapper::toHistoryResponse)
+                .toList();
+
+        return new PaymentDetailResponse(
+                paymentMapper.toResponse(payment),
+                history
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentStatusHistoryResponse> getPaymentHistory(Long id) {
+        getPaymentOrThrow(id);
+
+        return historyRepository
+                .findAllByPaymentIdOrderByChangedAtAsc(id)
+                .stream()
+                .map(paymentMapper::toHistoryResponse)
+                .toList();
     }
 
     @Transactional
@@ -258,6 +282,7 @@ public class PaymentService {
             throw new InvalidStatusTransitionException(currentStatus, newStatus);
         }
     }
+
     private Payment getPaymentOrThrow(Long id) {
         return paymentRepository
                 .findById(id)
