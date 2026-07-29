@@ -10,6 +10,8 @@
 6. Click "Send"
 7. Click "Complete"
 8. Show the status history timeline
+9. Highlight that the demo now uses a CNY source account and a USD destination account
+10. Explain that the destination balance is credited after exchange conversion
 
 ## Demo 2: Failed payment
 
