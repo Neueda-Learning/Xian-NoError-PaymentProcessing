@@ -1,14 +1,15 @@
 package com.example.paymentprocessing.service;
 
-import com.example.paymentprocessing.dto.CreatePaymentRequest;
-import com.example.paymentprocessing.dto.PaymentDetailResponse;
-import com.example.paymentprocessing.dto.PaymentResponse;
-import com.example.paymentprocessing.dto.PaymentStatusHistoryResponse;
+import com.example.paymentprocessing.dto.*;
+import com.example.paymentprocessing.entity.Account;
 import com.example.paymentprocessing.entity.Payment;
 import com.example.paymentprocessing.entity.PaymentStatusHistory;
+import com.example.paymentprocessing.enums.PaymentErrorCode;
 import com.example.paymentprocessing.enums.PaymentStatus;
 import com.example.paymentprocessing.exception.DuplicatePaymentException;
+import com.example.paymentprocessing.exception.InvalidStatusTransitionException;
 import com.example.paymentprocessing.exception.PaymentNotFoundException;
+import com.example.paymentprocessing.exception.PaymentValidationException;
 import com.example.paymentprocessing.mapper.PaymentMapper;
 import com.example.paymentprocessing.repository.AccountRepository;
 import com.example.paymentprocessing.repository.PaymentRepository;
@@ -125,6 +126,161 @@ public class PaymentService {
                 .stream()
                 .map(paymentMapper::toHistoryResponse)
                 .toList();
+    }
+
+    @Transactional
+    public PaymentResponse validatePayment(Long id) {
+        Payment payment = getPaymentOrThrow(id);
+
+        try {
+            validationService.validateForProcessing(payment);
+
+            return transitionPayment(
+                    payment,
+                    PaymentStatus.VALIDATED,
+                    "Payment passed validation",
+                    null,
+                    null
+            );
+
+        } catch (PaymentValidationException exception) {
+            return transitionPayment(
+                    payment,
+                    PaymentStatus.FAILED,
+                    "Validation failed: " + exception.getMessage(),
+                    exception.getErrorCode().name(),
+                    exception.getMessage()
+            );
+        }
+    }
+
+    @Transactional
+    public PaymentResponse sendPayment(Long id) {
+        Payment payment = getPaymentOrThrow(id);
+
+        if (payment.getReference() != null
+                && payment.getReference().toUpperCase().contains("FAIL-SEND")) {
+            return transitionPayment(
+                    payment,
+                    PaymentStatus.FAILED,
+                    "Simulated network failure during sending",
+                    PaymentErrorCode.NETWORK_ERROR.name(),
+                    "Simulated payment network unavailable"
+            );
+        }
+
+        return transitionPayment(
+                payment,
+                PaymentStatus.SENT,
+                "Payment sent to simulated payment network",
+                null,
+                null
+        );
+    }
+
+    @Transactional
+    public PaymentResponse completePayment(Long id) {
+        Payment payment = getPaymentOrThrow(id);
+
+        validateTransition(payment.getStatus(), PaymentStatus.COMPLETED);
+
+        try {
+            validationService.validateForProcessing(payment);
+
+            Account sourceAccount = accountRepository
+                    .findByAccountNumber(payment.getSourceAccount())
+                    .orElseThrow(() -> new PaymentValidationException(
+                            PaymentErrorCode.INVALID_ACCOUNT,
+                            "Source account does not exist"
+                    ));
+
+            Account destinationAccount = accountRepository
+                    .findByAccountNumber(payment.getDestinationAccount())
+                    .orElseThrow(() -> new PaymentValidationException(
+                            PaymentErrorCode.INVALID_ACCOUNT,
+                            "Destination account does not exist"
+                    ));
+
+            sourceAccount.debit(payment.getAmount());
+            destinationAccount.credit(payment.getAmount());
+
+            accountRepository.save(sourceAccount);
+            accountRepository.save(destinationAccount);
+
+            return transitionPayment(
+                    payment,
+                    PaymentStatus.COMPLETED,
+                    "Payment successfully completed and account balances updated",
+                    null,
+                    null
+            );
+
+        } catch (PaymentValidationException exception) {
+            return transitionPayment(
+                    payment,
+                    PaymentStatus.FAILED,
+                    "Payment completion failed: " + exception.getMessage(),
+                    exception.getErrorCode().name(),
+                    exception.getMessage()
+            );
+        }
+    }
+
+    @Transactional
+    public PaymentResponse failPayment(Long id, FailPaymentRequest request) {
+        Payment payment = getPaymentOrThrow(id);
+
+        String message = request.errorMessage() == null || request.errorMessage().isBlank()
+                ? "Payment manually failed"
+                : request.errorMessage();
+
+        return transitionPayment(
+                payment,
+                PaymentStatus.FAILED,
+                "Payment failed manually: " + message,
+                request.errorCode().name(),
+                message
+        );
+    }
+
+    private PaymentResponse transitionPayment(
+            Payment payment,
+            PaymentStatus newStatus,
+            String reason,
+            String errorCode,
+            String errorMessage
+    ) {
+        PaymentStatus previousStatus = payment.getStatus();
+        validateTransition(previousStatus, newStatus);
+
+        payment.setStatus(newStatus);
+        payment.setUpdatedAt(LocalDateTime.now());
+
+        if (newStatus == PaymentStatus.FAILED) {
+            payment.setErrorCode(errorCode);
+            payment.setErrorMessage(errorMessage);
+        } else {
+            payment.setErrorCode(null);
+            payment.setErrorMessage(null);
+        }
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        saveHistory(
+                savedPayment.getId(),
+                previousStatus,
+                newStatus,
+                reason,
+                SYSTEM_USER
+        );
+
+        return paymentMapper.toResponse(savedPayment);
+    }
+
+    private void validateTransition(PaymentStatus currentStatus, PaymentStatus newStatus) {
+        if (!VALID_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(newStatus)) {
+            throw new InvalidStatusTransitionException(currentStatus, newStatus);
+        }
     }
 
     private Payment getPaymentOrThrow(Long id) {
