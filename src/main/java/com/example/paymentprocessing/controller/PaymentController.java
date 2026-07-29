@@ -1,11 +1,11 @@
 package com.example.paymentprocessing.controller;
 
-import com.example.paymentprocessing.dto.FailPaymentRequest;
-import com.example.paymentprocessing.dto.PaymentDetailResponse;
-import com.example.paymentprocessing.dto.PaymentResponse;
-import com.example.paymentprocessing.dto.PaymentStatusHistoryResponse;
+import com.example.paymentprocessing.dto.*;
+import com.example.paymentprocessing.enums.PaymentStatus;
 import com.example.paymentprocessing.service.PaymentService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +18,27 @@ public class PaymentController {
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
     }
+
+    @PostMapping
+    public ResponseEntity<PaymentResponse> createPayment(
+            @Valid @RequestBody CreatePaymentRequest request
+    ) {
+        PaymentResponse response = paymentService.createPayment(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public List<PaymentResponse> getPayments(
+            @RequestParam(required = false) PaymentStatus status
+    ) {
+        return paymentService.getPayments(status);
+    }
+
+    @GetMapping("/{id}")
+    public PaymentResponse getPayment(@PathVariable Long id) {
+        return paymentService.getPayment(id);
+    }
+
     @GetMapping("/{id}/details")
     public PaymentDetailResponse getPaymentDetails(@PathVariable Long id) {
         return paymentService.getPaymentDetails(id);
