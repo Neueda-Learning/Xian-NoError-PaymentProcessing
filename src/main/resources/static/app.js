@@ -1,5 +1,9 @@
 const API_BASE = '/api/payments';
 
+// DOM Elements
+const createPage = document.getElementById('createPage');
+const listPage = document.getElementById('listPage');
+const detailSidebar = document.getElementById('detailSidebar');
 const paymentsTableBody = document.getElementById('paymentsTableBody');
 const statusFilter = document.getElementById('statusFilter');
 const refreshBtn = document.getElementById('refreshBtn');
@@ -8,15 +12,27 @@ const formMessage = document.getElementById('formMessage');
 const paymentDetail = document.getElementById('paymentDetail');
 const historyTimeline = document.getElementById('historyTimeline');
 const actionButtons = document.getElementById('actionButtons');
-const selectedPaymentHint = document.getElementById('selectedPaymentHint');
 const fillDemoBtn = document.getElementById('fillDemoBtn');
 const resetFormBtn = document.getElementById('resetFormBtn');
+const goToCreateBtn = document.getElementById('goToCreateBtn');
+const goToListBtn = document.getElementById('goToListBtn');
+const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
+// State
 let selectedPaymentId = null;
+let allPayments = [];
+let sortConfig = {
+    field: null,
+    direction: null // 'asc', 'desc', or null
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadPayments();
+    setupRouting();
+    setupEventListeners();
+    navigateTo('list');
+});
 
+function setupEventListeners() {
     refreshBtn.addEventListener('click', loadPayments);
     statusFilter.addEventListener('change', loadPayments);
     createPaymentForm.addEventListener('submit', createPayment);
@@ -25,15 +41,57 @@ document.addEventListener('DOMContentLoaded', () => {
         createPaymentForm.reset();
         hideMessage();
     });
-});
+    goToCreateBtn.addEventListener('click', () => navigateTo('create'));
+    goToListBtn.addEventListener('click', () => navigateTo('list'));
+    closeSidebarBtn.addEventListener('click', closeSidebar);
+
+    // Setup table header sorting
+    document.querySelectorAll('th[data-sort]').forEach(header => {
+        header.addEventListener('click', () => {
+            const field = header.dataset.sort;
+            handleHeaderClick(field);
+        });
+    });
+}
+
+function setupRouting() {
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.slice(1) || 'list';
+        navigateTo(hash);
+    });
+}
+
+function navigateTo(page) {
+    window.location.hash = page;
+
+    // Update page visibility
+    createPage.classList.toggle('active', page === 'create');
+    createPage.classList.toggle('hidden', page !== 'create');
+    listPage.classList.toggle('active', page === 'list');
+    listPage.classList.toggle('hidden', page !== 'list');
+
+    // Update nav buttons
+    goToCreateBtn.style.display = page === 'list' ? 'block' : 'none';
+    goToListBtn.style.display = page === 'create' ? 'block' : 'none';
+
+    // Close sidebar when navigating away
+    if (page === 'create') {
+        closeSidebar();
+    }
+
+    // Load payments on list page
+    if (page === 'list') {
+        loadPayments();
+    }
+}
 
 async function loadPayments() {
     const status = statusFilter.value;
     const url = status ? `${API_BASE}?status=${status}` : API_BASE;
 
     try {
-        const payments = await fetchJson(url);
-        renderPayments(payments);
+        allPayments = await fetchJson(url);
+        renderPayments(allPayments);
     } catch (error) {
         showMessage(error.message, 'error');
     }
@@ -45,7 +103,7 @@ function renderPayments(payments) {
     if (!payments.length) {
         paymentsTableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="empty">No payments found.</td>
+                <td colspan="8" style="text-align: center; color: #667085; padding: 20px;">No payments found.</td>
             </tr>
         `;
         return;
@@ -63,8 +121,70 @@ function renderPayments(payments) {
             <td>${statusBadge(payment.status)}</td>
             <td>${formatDate(payment.createdAt)}</td>
         `;
-        row.addEventListener('click', () => loadPaymentDetails(payment.id));
+        row.addEventListener('click', () => {
+            loadPaymentDetails(payment.id);
+            openSidebar();
+        });
         paymentsTableBody.appendChild(row);
+    }
+}
+
+function handleHeaderClick(field) {
+    // Determine sort direction
+    if (sortConfig.field === field) {
+        // Toggle direction or clear
+        if (sortConfig.direction === 'asc') {
+            sortConfig.direction = 'desc';
+        } else if (sortConfig.direction === 'desc') {
+            sortConfig.field = null;
+            sortConfig.direction = null;
+        } else {
+            sortConfig.direction = 'asc';
+        }
+    } else {
+        sortConfig.field = field;
+        sortConfig.direction = 'asc';
+    }
+
+    // Update sort indicators
+    document.querySelectorAll('.sort-indicator').forEach(ind => {
+        ind.classList.remove('asc', 'desc');
+    });
+
+    if (sortConfig.field) {
+        const activeHeader = document.querySelector(`th[data-sort="${sortConfig.field}"]`);
+        if (activeHeader) {
+            const indicator = activeHeader.querySelector('.sort-indicator');
+            if (indicator) {
+                indicator.classList.add(sortConfig.direction);
+            }
+        }
+
+        // Sort payments
+        const sortedPayments = [...allPayments].sort((a, b) => {
+            let aVal = a[sortConfig.field];
+            let bVal = b[sortConfig.field];
+
+            // Handle numeric comparisons
+            if (typeof aVal === 'string' && !isNaN(aVal)) {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+            }
+
+            // Handle date comparisons
+            if (sortConfig.field === 'createdAt') {
+                aVal = new Date(aVal).getTime();
+                bVal = new Date(bVal).getTime();
+            }
+
+            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        renderPayments(sortedPayments);
+    } else {
+        renderPayments(allPayments);
     }
 }
 
@@ -93,8 +213,9 @@ async function createPayment(event) {
 
         showMessage(`Payment #${createdPayment.id} created successfully.`, 'success');
         createPaymentForm.reset();
-        await loadPayments();
+        await navigateTo('list');
         await loadPaymentDetails(createdPayment.id);
+        openSidebar();
     } catch (error) {
         showMessage(error.message, 'error');
     }
@@ -102,7 +223,6 @@ async function createPayment(event) {
 
 async function loadPaymentDetails(id) {
     selectedPaymentId = id;
-    selectedPaymentHint.textContent = `Selected payment #${id}`;
 
     try {
         const details = await fetchJson(`${API_BASE}/${id}/details`);
@@ -257,6 +377,15 @@ function renderHistory(history) {
     }
 }
 
+function openSidebar() {
+    detailSidebar.classList.add('open');
+}
+
+function closeSidebar() {
+    detailSidebar.classList.remove('open');
+    selectedPaymentId = null;
+}
+
 async function fetchJson(url, options = {}) {
     const response = await fetch(url, {
         headers: {
@@ -313,8 +442,8 @@ function fillDemoData() {
     document.getElementById('idempotencyKey').value = `PAY-DEMO-${timestamp}`;
     document.getElementById('sourceAccount').value = 'ACC-001';
     document.getElementById('destinationAccount').value = 'ACC-USD-001';
-    document.getElementById('amount').value = '250.00';
-    document.getElementById('currency').value = 'CNY';
+    document.getElementById('amount').value = '10.00';
+    document.getElementById('currency').value = 'USD';
     document.getElementById('reference').value = `Cross-currency demo payment ${timestamp}`;
 }
 

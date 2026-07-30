@@ -8,121 +8,133 @@
 </head>
 <body>
 <header class="app-header">
-    <div>
-        <h1>Payment Processing System</h1>
+    <div class="header-nav">
+        <div>
+            <h1>Payment Processing System</h1>
+        </div>
+        <nav class="header-buttons">
+            <button id="goToListBtn" class="secondary-btn" type="button" style="display:none;">← Back to Payments</button>
+            <button id="goToCreateBtn" class="secondary-btn" type="button">+ New Payment</button>
+        </nav>
     </div>
 </header>
 
 <main class="layout">
-    <section class="card">
-        <div class="section-title">
-            <h2>Create Payment</h2>
-            <button id="fillDemoBtn" class="secondary-btn" type="button">Fill Demo Data</button>
-        </div>
-
-        <form id="createPaymentForm" class="payment-form">
-            <label>
-                Idempotency Key
-                <input id="idempotencyKey" name="idempotencyKey" type="text" required
-                       placeholder="PAY-DEMO-001"/>
-            </label>
-
-            <label>
-                Source Account
-                <input id="sourceAccount" name="sourceAccount" type="text" required
-                       placeholder="ACC-001"/>
-            </label>
-
-            <label>
-                Destination Account
-                <input id="destinationAccount" name="destinationAccount" type="text" required
-                       placeholder="ACC-002"/>
-            </label>
-
-            <label>
-                Amount
-                <input id="amount" name="amount" type="number" required min="0.01" step="0.01"
-                       placeholder="100.00"/>
-            </label>
-
-            <label>
-                Currency
-                <select id="currency" name="currency" required>
-                    <option value="CNY">CNY</option>
-                    <option value="GBP">GBP</option>
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
-                </select>
-            </label>
-
-            <label class="full-width">
-                Reference
-                <input id="reference" name="reference" type="text"
-                       placeholder="Invoice 1001"/>
-            </label>
-
-            <div class="form-actions">
-                <button type="submit">Create Payment</button>
-                <button id="resetFormBtn" class="secondary-btn" type="button">Clear</button>
+    <!-- Create Payment Page -->
+    <section id="createPage" class="page hidden">
+        <div class="card">
+            <div class="section-title">
+                <h2>Create Payment</h2>
+                <button id="fillDemoBtn" class="secondary-btn" type="button">Fill Demo Data</button>
             </div>
-        </form>
-        <div id="formMessage" class="message hidden"></div>
-    </section>
 
-    <section class="card">
-        <div class="section-title">
-            <h2>Payments</h2>
-            <div class="toolbar">
-                <select id="statusFilter">
-                    <option value="">All statuses</option>
-                    <option value="CREATED">CREATED</option>
-                    <option value="VALIDATED">VALIDATED</option>
-                    <option value="SENT">SENT</option>
-                    <option value="COMPLETED">COMPLETED</option>
-                    <option value="FAILED">FAILED</option>
-                </select>
-                <button id="refreshBtn" class="secondary-btn" type="button">Refresh</button>
-            </div>
-        </div>
+            <form id="createPaymentForm" class="payment-form">
+                <label>
+                    Idempotency Key
+                    <input id="idempotencyKey" name="idempotencyKey" type="text" required
+                           placeholder="PAY-DEMO-001"/>
+                </label>
 
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Reference</th>
-                    <th>Amount</th>
-                    <th>Currency</th>
-                    <th>Source</th>
-                    <th>Destination</th>
-                    <th>Status</th>
-                    <th>Created At</th>
-                </tr>
-                </thead>
-                <tbody id="paymentsTableBody">
-                </tbody>
-            </table>
+                <label>
+                    Source Account
+                    <input id="sourceAccount" name="sourceAccount" type="text" required
+                           placeholder="ACC-001"/>
+                </label>
+
+                <label>
+                    Destination Account
+                    <input id="destinationAccount" name="destinationAccount" type="text" required
+                           placeholder="ACC-002"/>
+                </label>
+
+                <label>
+                    Amount
+                    <input id="amount" name="amount" type="number" required min="0.01" step="0.01"
+                           placeholder="100.00"/>
+                </label>
+
+                <label>
+                    Currency
+                    <select id="currency" name="currency" required>
+                        <option value="CNY">CNY</option>
+                        <option value="GBP">GBP</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </label>
+
+                <label class="full-width">
+                    Reference
+                    <input id="reference" name="reference" type="text"
+                           placeholder="Invoice 1001"/>
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit">Pay</button>
+                    <button id="resetFormBtn" class="secondary-btn" type="button">Clear</button>
+                </div>
+            </form>
+            <div id="formMessage" class="message hidden"></div>
         </div>
     </section>
 
-    <section class="card detail-card">
-        <div class="section-title">
-            <h2>Payment Details</h2>
-            <span id="selectedPaymentHint" class="hint">Click a payment row to view details.</span>
-        </div>
+    <!-- Payments List Page -->
+    <section id="listPage" class="page active">
+        <div class="card">
+            <div class="section-title">
+                <h2>Payments</h2>
+                <div class="toolbar">
+                    <select id="statusFilter">
+                        <option value="">All statuses</option>
+                        <option value="CREATED">CREATED</option>
+                        <option value="VALIDATED">VALIDATED</option>
+                        <option value="SENT">SENT</option>
+                        <option value="COMPLETED">COMPLETED</option>
+                        <option value="FAILED">FAILED</option>
+                    </select>
+                    <button id="refreshBtn" class="secondary-btn" type="button">Refresh</button>
+                </div>
+            </div>
 
-        <div id="paymentDetail" class="detail-grid empty">
-            No payment selected.
-        </div>
-
-        <div id="actionButtons" class="action-buttons hidden"></div>
-
-        <h3>Status History</h3>
-        <div id="historyTimeline" class="timeline empty">
-            No history yet.
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Reference</th>
+                        <th data-sort="amount">Amount <span class="sort-indicator"></span></th>
+                        <th>Currency</th>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th data-sort="createdAt">Created At <span class="sort-indicator"></span></th>
+                    </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </section>
 </main>
+
+<!-- Detail Sidebar -->
+<aside id="detailSidebar" class="detail-sidebar">
+    <div class="sidebar-header">
+        <h3>Payment Details</h3>
+        <button id="closeSidebarBtn" class="close-btn" type="button">✕</button>
+    </div>
+    <div class="sidebar-content">
+        <div id="paymentDetail" class="detail-grid empty">
+            No payment selected.
+        </div>
+        <div id="actionButtons" class="action-buttons hidden"></div>
+        <h4>Status History</h4>
+        <div id="historyTimeline" class="timeline empty">
+            No history yet.
+        </div>
+    </div>
+</aside>
 
 <script src="app.js"></script>
 </body>
