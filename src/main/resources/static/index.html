@@ -13,7 +13,8 @@
             <h1>Payment Processing System</h1>
         </div>
         <nav class="header-buttons">
-            <button id="goToListBtn" class="secondary-btn" type="button" style="display:none;">← Back to Payments</button>
+            <button id="goToListBtn" class="secondary-btn" type="button" style="display:none;">Payments</button>
+            <button id="goToDashboardBtn" class="secondary-btn" type="button">Dashboard</button>
             <button id="goToCreateBtn" class="secondary-btn" type="button">+ New Payment</button>
         </nav>
     </div>
@@ -114,6 +115,38 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </section>
+
+    <!-- Statistics Dashboard Page -->
+    <section id="dashboardPage" class="page hidden">
+        <div class="card stats-page-card">
+            <section class="stats-section">
+                <div class="section-title">
+                    <h2>Statistics Dashboard</h2>
+                    <span id="statsUpdatedAt" class="hint">Waiting for payment data...</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stats-panel">
+                        <h3>Daily Transaction Volumes (Last 14 Days)</h3>
+                        <div id="dailyVolumeChart" class="chart-area empty">No data yet.</div>
+                    </div>
+
+                    <div class="stats-panel">
+                        <h3>Success / Failure Rates</h3>
+                        <div id="successFailureChart" class="chart-area empty">No data yet.</div>
+                    </div>
+
+                    <div class="stats-panel">
+                        <h3>Average Processing Time</h3>
+                        <div class="kpi-block">
+                            <p id="averageProcessingValue" class="kpi-value">-</p>
+                            <p id="averageProcessingMeta" class="hint">No finalized payments yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </section>
 </main>

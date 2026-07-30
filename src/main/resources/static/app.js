@@ -3,6 +3,7 @@ const API_BASE = '/api/payments';
 // DOM Elements
 const createPage = document.getElementById('createPage');
 const listPage = document.getElementById('listPage');
+const dashboardPage = document.getElementById('dashboardPage');
 const detailSidebar = document.getElementById('detailSidebar');
 const paymentsTableBody = document.getElementById('paymentsTableBody');
 const statusFilter = document.getElementById('statusFilter');
@@ -16,7 +17,13 @@ const fillDemoBtn = document.getElementById('fillDemoBtn');
 const resetFormBtn = document.getElementById('resetFormBtn');
 const goToCreateBtn = document.getElementById('goToCreateBtn');
 const goToListBtn = document.getElementById('goToListBtn');
+const goToDashboardBtn = document.getElementById('goToDashboardBtn');
 const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+const statsUpdatedAt = document.getElementById('statsUpdatedAt');
+const dailyVolumeChart = document.getElementById('dailyVolumeChart');
+const successFailureChart = document.getElementById('successFailureChart');
+const averageProcessingValue = document.getElementById('averageProcessingValue');
+const averageProcessingMeta = document.getElementById('averageProcessingMeta');
 
 // State
 let selectedPaymentId = null;
@@ -29,7 +36,7 @@ let sortConfig = {
 document.addEventListener('DOMContentLoaded', () => {
     setupRouting();
     setupEventListeners();
-    navigateTo('list');
+    navigateTo('dashboard');
 });
 
 function setupEventListeners() {
@@ -43,6 +50,7 @@ function setupEventListeners() {
     });
     goToCreateBtn.addEventListener('click', () => navigateTo('create'));
     goToListBtn.addEventListener('click', () => navigateTo('list'));
+    goToDashboardBtn.addEventListener('click', () => navigateTo('dashboard'));
     closeSidebarBtn.addEventListener('click', closeSidebar);
 
     // Setup table header sorting
@@ -56,7 +64,7 @@ function setupEventListeners() {
 
 function setupRouting() {
     window.addEventListener('hashchange', () => {
-        const hash = window.location.hash.slice(1) || 'list';
+        const hash = window.location.hash.slice(1) || 'dashboard';
         navigateTo(hash);
     });
 }
@@ -69,19 +77,27 @@ function navigateTo(page) {
     createPage.classList.toggle('hidden', page !== 'create');
     listPage.classList.toggle('active', page === 'list');
     listPage.classList.toggle('hidden', page !== 'list');
+    dashboardPage.classList.toggle('active', page === 'dashboard');
+    dashboardPage.classList.toggle('hidden', page !== 'dashboard');
 
     // Update nav buttons
     goToCreateBtn.style.display = page === 'list' ? 'block' : 'none';
-    goToListBtn.style.display = page === 'create' ? 'block' : 'none';
+    goToDashboardBtn.style.display = page === 'list' ? 'block' : 'none';
+    goToListBtn.style.display = page === 'list' ? 'none' : 'block';
 
     // Close sidebar when navigating away
-    if (page === 'create') {
+    if (page !== 'list') {
         closeSidebar();
     }
 
-    // Load payments on list page
+    // Load data for active page
     if (page === 'list') {
         loadPayments();
+        return;
+    }
+
+    if (page === 'dashboard') {
+        loadDashboardStatistics();
     }
 }
 
@@ -95,6 +111,166 @@ async function loadPayments() {
     } catch (error) {
         showMessage(error.message, 'error');
     }
+}
+
+async function loadDashboardStatistics() {
+    try {
+        const payments = await fetchJson(API_BASE);
+        renderStatistics(payments);
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+function renderStatistics(payments) {
+    if (!dailyVolumeChart || !successFailureChart || !averageProcessingValue || !averageProcessingMeta || !statsUpdatedAt) {
+        return;
+    }
+
+    if (!payments.length) {
+        dailyVolumeChart.classList.add('empty');
+        dailyVolumeChart.textContent = 'No data yet.';
+        successFailureChart.classList.add('empty');
+        successFailureChart.textContent = 'No data yet.';
+        averageProcessingValue.textContent = '-';
+        averageProcessingMeta.textContent = 'No finalized payments yet.';
+        statsUpdatedAt.textContent = 'No payments available.';
+        return;
+    }
+
+    const dailySeries = buildDailyVolumeSeries(payments, 14);
+    renderDailyVolumeChart(dailySeries);
+    renderSuccessFailureChart(payments);
+    renderAverageProcessingTime(payments);
+    statsUpdatedAt.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+function buildDailyVolumeSeries(payments, days) {
+    const countsByDay = new Map();
+
+    for (const payment of payments) {
+        const createdDate = parseApiDate(payment.createdAt);
+        if (!createdDate) {
+            continue;
+        }
+
+        const key = formatDateKey(createdDate);
+        countsByDay.set(key, (countsByDay.get(key) || 0) + 1);
+    }
+
+    const series = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = days - 1; i >= 0; i -= 1) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const key = formatDateKey(date);
+        series.push({
+            key,
+            label: key.slice(5),
+            count: countsByDay.get(key) || 0
+        });
+    }
+
+    return series;
+}
+
+function renderDailyVolumeChart(series) {
+    const maxCount = Math.max(1, ...series.map(item => item.count));
+    const hasData = series.some(item => item.count > 0);
+
+    if (!hasData) {
+        dailyVolumeChart.classList.add('empty');
+        dailyVolumeChart.textContent = 'No transactions in the last 14 days.';
+        return;
+    }
+
+    dailyVolumeChart.classList.remove('empty');
+    dailyVolumeChart.innerHTML = `
+        <div class="chart-bars">
+            ${series.map(item => `
+                <div class="chart-bar-item" title="${item.key}: ${item.count}">
+                    <div class="chart-bar-track">
+                        <div class="chart-bar-fill" style="height: ${Math.round((item.count / maxCount) * 100)}%"></div>
+                    </div>
+                    <span>${item.label}</span>
+                    <strong>${item.count}</strong>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderSuccessFailureChart(payments) {
+    const total = payments.length;
+    const successCount = payments.filter(payment => payment.status === 'COMPLETED').length;
+    const failureCount = payments.filter(payment => payment.status === 'FAILED').length;
+    const openCount = total - successCount - failureCount;
+
+    const successRate = (successCount / total) * 100;
+    const failureRate = (failureCount / total) * 100;
+    const openRate = (openCount / total) * 100;
+
+    successFailureChart.classList.remove('empty');
+    successFailureChart.innerHTML = `
+        <div class="rate-summary">
+            <div class="rate-track" aria-label="Payment success and failure rates">
+                <div class="rate-segment-success" style="width:${successRate.toFixed(2)}%"></div>
+                <div class="rate-segment-failed" style="width:${failureRate.toFixed(2)}%"></div>
+                <div class="rate-segment-open" style="width:${openRate.toFixed(2)}%"></div>
+            </div>
+            <div class="rate-legend">
+                <span>Success: ${successCount} (${successRate.toFixed(1)}%)</span>
+                <span>Failed: ${failureCount} (${failureRate.toFixed(1)}%)</span>
+                <span>In Progress: ${openCount} (${openRate.toFixed(1)}%)</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderAverageProcessingTime(payments) {
+    const finalized = payments
+        .filter(payment => payment.status === 'COMPLETED' || payment.status === 'FAILED')
+        .map(payment => processingSeconds(payment))
+        .filter(seconds => seconds !== null);
+
+    if (!finalized.length) {
+        averageProcessingValue.textContent = '-';
+        averageProcessingMeta.textContent = 'No finalized payments with valid timestamps yet.';
+        return;
+    }
+
+    const total = finalized.reduce((acc, seconds) => acc + seconds, 0);
+    const averageSeconds = total / finalized.length;
+    averageProcessingValue.textContent = formatDuration(averageSeconds);
+    averageProcessingMeta.textContent = `Based on ${finalized.length} finalized payments.`;
+}
+
+function processingSeconds(payment) {
+    const created = parseApiDate(payment.createdAt);
+    const updated = parseApiDate(payment.updatedAt);
+
+    if (!created || !updated) {
+        return null;
+    }
+
+    const diffSeconds = (updated.getTime() - created.getTime()) / 1000;
+    return diffSeconds >= 0 ? diffSeconds : null;
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) {
+        return `${Math.round(seconds)} sec`;
+    }
+
+    const minutes = seconds / 60;
+    if (minutes < 60) {
+        return `${minutes.toFixed(1)} min`;
+    }
+
+    const hours = minutes / 60;
+    return `${hours.toFixed(2)} hr`;
 }
 
 function renderPayments(payments) {
@@ -423,7 +599,25 @@ function formatDate(value) {
     if (!value) {
         return '-';
     }
-    return new Date(value).toLocaleString();
+
+    const parsed = parseApiDate(value);
+    return parsed ? parsed.toLocaleString() : '-';
+}
+
+function parseApiDate(value) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function showMessage(message, type) {
